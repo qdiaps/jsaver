@@ -30,7 +30,7 @@
 
         <!-- Test Dependencies -->
         <junit-jupiter.version>5.12.0</junit-jupiter.version>
-        <mockito.version>5.18.0</mockito.version>
+        <mockito.version>5.24.0</mockito.version>
         <assertj.version>3.27.3</assertj.version>
 
         <!-- Plugins -->
