@@ -1,4 +1,4 @@
-FROM eclipse-temurin:21-jdk-noble AS builder
+FROM eclipse-temurin:24-jdk-noble AS builder
 
 WORKDIR /build
 
@@ -9,7 +9,7 @@ RUN chmod +x mvnw && ./mvnw dependency:go-offline -B
 COPY src/ src/
 RUN ./mvnw clean package -DskipTests -B
 
-FROM eclipse-temurin:21-jre-noble AS runtime
+FROM eclipse-temurin:24-jre-noble AS runtime
 
 LABEL maintainer="qdiaps"
 LABEL description="jsaver - Telegram Bot"
