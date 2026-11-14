@@ -23,7 +23,7 @@
 
         <!-- Dependencies -->
         <telegram-bot.version>8.3.0</telegram-bot.version>
-        <slf4j.version>2.0.17</slf4j.version>
+        <slf4j.version>2.0.20</slf4j.version>
         <logback.version>1.5.18</logback.version>
         <jackson.version>2.18.3</jackson.version>
         <lombok.version>1.18.38</lombok.version>
