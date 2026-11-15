@@ -1,12 +1,10 @@
 package io.github.qdiaps.jsaver;
 
-import io.github.qdiaps.jsaver.bot.TelegramBotService;
-import io.github.qdiaps.jsaver.cli.CliExecutor;
-import io.github.qdiaps.jsaver.cli.CliTool;
+import java.util.concurrent.CountDownLatch;
+
+import io.github.qdiaps.jsaver.bot.Bot;
 import io.github.qdiaps.jsaver.config.AppConfig;
 import lombok.extern.slf4j.Slf4j;
-
-import java.util.concurrent.CountDownLatch;
 
 @Slf4j
 public class Main {
@@ -23,21 +21,21 @@ public class Main {
         log.info("Default command timeout: {}s", config.defaultTimeoutSeconds());
         log.info("Allowed users whitelist: {}", config.allowedChatIds().isEmpty() ? "ALL (Open)" : config.allowedChatIds());
 
-        CliTool.checkAll();
+        //CliTool.checkAll();
 
-        CliExecutor cliExecutor = new CliExecutor(config.workDir().toFile());
-        TelegramBotService botService = new TelegramBotService(config, cliExecutor);
+        //CliExecutor cliExecutor = new CliExecutor(config.workDir().toFile());
+        var bot = new Bot(config);
 
-        CountDownLatch shutdownLatch = new CountDownLatch(1);
+        var shutdownLatch = new CountDownLatch(1);
 
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
             log.info("Shutdown signal received. Performing graceful shutdown...");
-            botService.shutdown();
+            bot.stop();
             shutdownLatch.countDown();
             log.info("Shutdown complete.");
         }, "shutdown-hook"));
 
-        botService.start();
+        bot.start();
         log.info("jsaver application is running. Press Ctrl+C or send SIGTERM to stop.");
 
         try {

@@ -45,7 +45,7 @@ public class TelegramBotService {
         }
 
         if ("dev".equalsIgnoreCase(config.environment())) {
-            builder.debug();
+            // builder.debug();
         }
 
         return builder.build();
