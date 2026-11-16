@@ -9,19 +9,30 @@ import java.util.Objects;
 
 @Slf4j
 public class Bot {
-    private final AppConfig config;
     private final Receiver receiver;
-    private final MessageRouter router;
 
     private TelegramBot bot;
 
-    public Bot(AppConfig config) {
-        this.config = Objects.requireNonNull(config);
+    public Bot(TelegramBot bot, Receiver receiver) {
+        this.bot = Objects.requireNonNull(bot);
+        this.receiver = Objects.requireNonNull(receiver);
+    }
 
-        bot = createBot();
+    public static TelegramBot createBot(AppConfig config) {
+        if (config.botToken() == null || config.botToken().isBlank()) {
+            log.error("TELEGRAM_BOT_TOKEN is not configured!");
+            return null;
+        }
 
-        router = new MessageRouter(bot);
-        receiver = new Receiver(router);
+        var builder = new TelegramBot.Builder(config.botToken());
+        if (config.hasCustomBotApiUrl()) {
+            log.info("Using custom Telegram Bot API Server URL: {}", config.botApiUrl());
+            builder.apiUrl(config.botApiUrl());
+            String fileUrl = config.botApiUrl().replaceAll("/bot/?$", "") + "/file/bot";
+            builder.fileApiUrl(fileUrl);
+        }
+
+        return builder.build();
     }
 
     public void start() {
@@ -55,22 +66,5 @@ public class Bot {
             log.info("Shutting down Telegram Bot...");
             bot.shutdown();
         }
-    }
-
-    private TelegramBot createBot() {
-        if (config.botToken() == null || config.botToken().isBlank()) {
-            log.error("TELEGRAM_BOT_TOKEN is not configured!");
-            return null;
-        }
-
-        var builder = new TelegramBot.Builder(config.botToken());
-        if (config.hasCustomBotApiUrl()) {
-            log.info("Using custom Telegram Bot API Server URL: {}", config.botApiUrl());
-            builder.apiUrl(config.botApiUrl());
-            String fileUrl = config.botApiUrl().replaceAll("/bot/?$", "") + "/file/bot";
-            builder.fileApiUrl(fileUrl);
-        }
-
-        return builder.build();
     }
 }

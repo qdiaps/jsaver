@@ -2,9 +2,14 @@ package io.github.qdiaps.jsaver;
 
 import java.util.concurrent.CountDownLatch;
 
+import com.pengrad.telegrambot.TelegramBot;
+
 import org.slf4j.bridge.SLF4JBridgeHandler;
 
 import io.github.qdiaps.jsaver.bot.Bot;
+import io.github.qdiaps.jsaver.bot.MessageRouter;
+import io.github.qdiaps.jsaver.bot.Receiver;
+import io.github.qdiaps.jsaver.bot.Sender;
 import io.github.qdiaps.jsaver.config.AppConfig;
 import lombok.extern.slf4j.Slf4j;
 
@@ -29,7 +34,11 @@ public class Main {
         //CliTool.checkAll();
 
         //CliExecutor cliExecutor = new CliExecutor(config.workDir().toFile());
-        var bot = new Bot(config);
+        TelegramBot tgBot = Bot.createBot(config);
+        var sender = new Sender(tgBot);
+        var messageRouter = new MessageRouter(sender);
+        var receiver = new Receiver(messageRouter);
+        var bot = new Bot(tgBot, receiver);
 
         var shutdownLatch = new CountDownLatch(1);
 
