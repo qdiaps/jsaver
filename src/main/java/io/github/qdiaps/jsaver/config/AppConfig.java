@@ -39,7 +39,7 @@ public record AppConfig(
             throw new IllegalArgumentException("SENDER_FALLBACK_RETRY_AFTER_SEC must be > 0");
         if (maxRetryAfterSeconds < fallbackRetryAfterSeconds)
             throw new IllegalArgumentException("SENDER_MAX_RETRY_AFTER_SEC must be >= SENDER_FALLBACK_RETRY_AFTER_SEC");
-        if (!botUsername.endsWith("_bot"))
+        if (!botUsername.endsWith("bot"))
             throw new IllegalArgumentException("TELEGRAM_BOT_USERNAME must be end with 'bot'");
     }
 
@@ -115,6 +115,7 @@ public record AppConfig(
     private static void loadDotEnvIfExists(Map<String, String> env) {
         Path dotEnvPath = Paths.get(".env");
         if (!Files.exists(dotEnvPath)) {
+            log.warn(".env file not found at: {}", dotEnvPath.toAbsolutePath());
             return;
         }
 

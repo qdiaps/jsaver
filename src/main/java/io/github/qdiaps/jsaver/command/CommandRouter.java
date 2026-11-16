@@ -48,6 +48,8 @@ public class CommandRouter {
             ? List.of(parts[1].split("\\s+"))
             : List.of();
 
+        log.info("Received command from user [{}] in chat [{}], message [{}]: {}",
+                  metadata.userId(), metadata.chatId(), metadata.messageId(), text);
         command.execute(metadata, args);
     }
 }

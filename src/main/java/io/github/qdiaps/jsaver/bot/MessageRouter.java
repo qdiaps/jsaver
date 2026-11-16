@@ -2,26 +2,27 @@ package io.github.qdiaps.jsaver.bot;
 
 import com.pengrad.telegrambot.model.Chat;
 import com.pengrad.telegrambot.model.Message;
+import com.pengrad.telegrambot.model.MessageEntity;
 
+import io.github.qdiaps.jsaver.command.CommandRouter;
 import io.github.qdiaps.jsaver.contract.ChatType;
 import io.github.qdiaps.jsaver.contract.MessageMetadata;
-import io.github.qdiaps.jsaver.contract.Payload;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 @RequiredArgsConstructor
 public class MessageRouter {
-    private final Sender sender;
+    private final CommandRouter commandRouter;
 
     public void route(Message message) {
         var metadata = extractMetadata(message);
         var text = message.text().trim();
-        log.debug("Received message from user [{}] in chat [{}], message [{}]: {}",
-                  metadata.userId(), metadata.chatId(), metadata.messageId(), text);
 
-        var textPayload = new Payload.Text(text);
-        sender.sendContent(metadata, textPayload);
+        if (isCommand(message)) {
+            commandRouter.route(metadata, text);
+            return;
+        }
     }
 
     private MessageMetadata extractMetadata(Message message) {
@@ -32,5 +33,18 @@ public class MessageRouter {
         ChatType chatType = message.chat().type() == Chat.Type.Private ? ChatType.PRIVATE : ChatType.GROUP;
 
         return new MessageMetadata(userId, chatId, messageId, threadId, chatType);
+    }
+
+    private boolean isCommand(Message message) {
+        MessageEntity[] entities = message.entities();
+        if (entities == null)
+            return false;
+
+        for (var entity : entities) {
+            if (entity.offset() == 0 && entity.type() == MessageEntity.Type.bot_command)
+                return true;
+        }
+
+        return false;
     }
 }

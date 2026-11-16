@@ -1,0 +1,24 @@
+# Environment & secrets
+.env
+.env.example
+
+# Build artifacts & runtime data
+target/
+data/
+logs/
+*.log
+
+# Git & IDE
+.git/
+.gitignore
+.githooks/
+.github/
+.idea/
+
+# Docs & Docker files
+README.md
+LICENSE
+Dockerfile
+docker-compose.yml
+.dockerignore
+mvnw.cmd
