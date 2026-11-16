@@ -2,6 +2,8 @@ package io.github.qdiaps.jsaver;
 
 import java.util.concurrent.CountDownLatch;
 
+import org.slf4j.bridge.SLF4JBridgeHandler;
+
 import io.github.qdiaps.jsaver.bot.Bot;
 import io.github.qdiaps.jsaver.config.AppConfig;
 import lombok.extern.slf4j.Slf4j;
@@ -9,6 +11,9 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class Main {
     public static void main(String[] args) {
+        SLF4JBridgeHandler.removeHandlersForRootLogger();
+        SLF4JBridgeHandler.install();
+
         log.info("=================================================");
         log.info("Starting jsaver Bot Application");
         log.info("Java Version: {} ({})", System.getProperty("java.version"), System.getProperty("java.vendor"));

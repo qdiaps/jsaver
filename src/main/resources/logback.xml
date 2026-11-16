@@ -1,7 +1,11 @@
-<configuration scan="true" scanPeriod="30 seconds">
+<configuration>
     <variable name="APP_ENV" value="${APP_ENV:-dev}" />
     <variable name="LOG_DIR" value="${LOG_DIR:-./logs}" />
     <variable name="LOG_LEVEL" value="${LOG_LEVEL:-INFO}" />
+
+    <contextListener class="ch.qos.logback.classic.jul.LevelChangePropagator">
+        <resetJUL>true</resetJUL>
+    </contextListener>
 
     <!-- Console Appender with colored output for terminal / development -->
     <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
