@@ -6,6 +6,16 @@
 
 ---
 
+A multi-platform Telegram bot that automatically detects media links in private messages and group chats, extracts the content without watermarks, and sends it straight back to the conversation.
+
+## Features
+* *Broad platform support:* Works across dozens of popular social networks, video hostings, and image boards — designed to easily scale to hundreds of sources.
+* *All media formats:* Fetches videos, separate audio tracks, single images, and multi-photo carousels (delivered as clean Telegram media albums).
+* *Built for group chats:* Silently spots links in the flow of conversation and replies with the media without cluttering the chat.
+* *High-quality & large files:* Handles heavy, high-resolution videos seamlessly without aggressive compression or tight size limits.
+
+---
+
 ## Prerequisites
 
 1. **Java 21 LTS** or later.
