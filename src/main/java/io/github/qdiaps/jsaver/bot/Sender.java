@@ -13,6 +13,7 @@ import com.pengrad.telegrambot.request.SendMessage;
 import com.pengrad.telegrambot.response.BaseResponse;
 import com.pengrad.telegrambot.response.SendResponse;
 
+import io.github.qdiaps.jsaver.config.AppConfig;
 import io.github.qdiaps.jsaver.contract.DeliveryReport;
 import io.github.qdiaps.jsaver.contract.MessageMetadata;
 import io.github.qdiaps.jsaver.contract.Payload;
@@ -23,6 +24,7 @@ import lombok.extern.slf4j.Slf4j;
 @RequiredArgsConstructor
 public class Sender {
     private final TelegramBot bot;
+    private final AppConfig config;
 
     public DeliveryReport sendContent(MessageMetadata metadata, Payload payload) {
         return sendContent(metadata, List.of(payload));
@@ -72,7 +74,7 @@ public class Sender {
         Function<Boolean, R> action, boolean initialReply, boolean isImportant
     ) {
         boolean useReply = initialReply;
-        int maxAttempts = isImportant ? 3 : 1;
+        int maxAttempts = isImportant ? config.maxRetryAttempts() : 1;
         int attempt = 0;
 
         while (attempt < maxAttempts) {
@@ -100,9 +102,9 @@ public class Sender {
                 continue;
             } else if (code == 429) {
                 int retryAfter = (response.parameters() != null && response.parameters().retryAfter() != null)
-                    ? response.parameters().retryAfter() : 3;
+                    ? response.parameters().retryAfter() : config.fallbackRetryAfterSeconds();
                 log.warn("Rate limited (429), sleeping for {}s", retryAfter);
-                if (attempt >= maxAttempts || !sleepSeconds(retryAfter))
+                if (attempt >= maxAttempts || !sleepSeconds(Math.min(retryAfter, config.maxRetryAfterSeconds())))
                     return Optional.empty();
                 continue;
             } else if (code >= 500 && code < 600) {
@@ -132,7 +134,7 @@ public class Sender {
     }
 
     private boolean sleepBackoff(int attempt) {
-        long delayMs = 1000L * (1L << (attempt - 1));
+        long delayMs = config.retryBaseDelayMs() * (1L << (attempt - 1));
         return sleep(Duration.ofMillis(delayMs));
     }
 

@@ -19,43 +19,86 @@ public record AppConfig(
         String botToken,
         String botApiUrl,
         Path workDir,
-        long defaultTimeoutSeconds,
+        long commandTimeoutSeconds,
         String environment,
-        Set<Long> allowedChatIds
+        Set<Long> allowedChatIds,
+        int maxRetryAttempts,
+        long retryBaseDelayMs,
+        int fallbackRetryAfterSeconds,
+        int maxRetryAfterSeconds
 ) {
+    public AppConfig {
+        if (commandTimeoutSeconds <= 0)
+            throw new IllegalArgumentException("COMMAND_TIMEOUT_SECONDS must be > 0");
+        if (maxRetryAttempts < 1)
+            throw new IllegalArgumentException("SENDER_RETRY_MAX_ATTEMPTS must be >= 1");
+        if (retryBaseDelayMs <= 0)
+            throw new IllegalArgumentException("SENDER_RETRY_BASE_DELAY_MS must be > 0");
+        if (fallbackRetryAfterSeconds <= 0)
+            throw new IllegalArgumentException("SENDER_FALLBACK_RETRY_AFTER_SEC must be > 0");
+        if (maxRetryAfterSeconds < fallbackRetryAfterSeconds)
+            throw new IllegalArgumentException("SENDER_MAX_RETRY_AFTER_SEC must be >= SENDER_FALLBACK_RETRY_AFTER_SEC");
+    }
+
     public static AppConfig load() {
         Map<String, String> env = new HashMap<>(System.getenv());
         loadDotEnvIfExists(env);
 
-        String botToken = env.getOrDefault("TELEGRAM_BOT_TOKEN", "").trim();
-        String botApiUrl = env.getOrDefault("TELEGRAM_BOT_API_URL", "").trim();
+        return new AppConfig(
+            getString(env, "TELEGRAM_BOT_TOKEN", ""),
+            getString(env, "TELEGRAM_BOT_API_URL", ""),
+            Paths.get(getString(env, "WORK_DIR", "./data")).toAbsolutePath().normalize(),
+            getLong(env, "COMMAND_TIMEOUT_SECONDS", 300L),
+            getString(env, "APP_ENV", "dev").toLowerCase(),
+            getLongSet(env, "ALLOWED_TELEGRAM_USERS"),
+            getInt(env, "SENDER_RETRY_MAX_ATTEMPTS", 3),
+            getLong(env, "SENDER_RETRY_BASE_DELAY_MS", 1000L),
+            getInt(env, "SENDER_FALLBACK_RETRY_AFTER_SEC", 3),
+            getInt(env, "SENDER_MAX_RETRY_AFTER_SEC", 60)
+        );
+    }
 
-        String rawWorkDir = env.getOrDefault("JSAVER_WORK_DIR", "./data").trim();
-        Path workDir = Paths.get(rawWorkDir).toAbsolutePath().normalize();
+    private static String getString(Map<String, String> env, String key, String defaultValue) {
+        String value = env.get(key);
+        return (value == null || value.isBlank()) ? defaultValue : value.trim();
+    }
 
-        long defaultTimeout = 300;
+    private static int getInt(Map<String, String> env, String key, int defaultValue) {
+        String raw = env.get(key);
+        if (raw == null || raw.isBlank())
+            return defaultValue;
+
         try {
-            String rawTimeout = env.get("JSAVER_COMMAND_TIMEOUT_SECONDS");
-            if (rawTimeout != null && !rawTimeout.isBlank()) {
-                defaultTimeout = Long.parseLong(rawTimeout.trim());
-            }
+            return Integer.parseInt(raw.trim());
         } catch (NumberFormatException e) {
-            log.warn("Invalid JSAVER_COMMAND_TIMEOUT_SECONDS, using default: {}", defaultTimeout);
+            log.warn("Invalid {}, using default: {}", key, defaultValue);
+            return defaultValue;
         }
+    }
 
-        String environment = env.getOrDefault("APP_ENV", "dev").trim().toLowerCase();
+    private static long getLong(Map<String, String> env, String key, long defaultValue) {
+        String raw = env.get(key);
+        if (raw == null || raw.isBlank())
+            return defaultValue;
 
-        String rawAllowed = env.getOrDefault("ALLOWED_TELEGRAM_USERS", "").trim();
-        Set<Long> allowedUsers = Collections.emptySet();
-        if (!rawAllowed.isBlank()) {
-            allowedUsers = Arrays.stream(rawAllowed.split(","))
-                    .map(String::trim)
-                    .filter(s -> !s.isEmpty())
-                    .map(Long::parseLong)
-                    .collect(Collectors.toUnmodifiableSet());
+        try {
+            return Long.parseLong(raw.trim());
+        } catch (NumberFormatException e) {
+            log.warn("Invalid {}, using default: {}", key, defaultValue);
+            return defaultValue;
         }
+    }
 
-        return new AppConfig(botToken, botApiUrl, workDir, defaultTimeout, environment, allowedUsers);
+    private static Set<Long> getLongSet(Map<String, String> env, String key) {
+        String raw = env.get(key);
+        if (raw == null || raw.isBlank())
+            return Collections.emptySet();
+
+        return Arrays.stream(raw.split(","))
+            .map(String::trim)
+            .filter(s -> !s.isEmpty())
+            .map(Long::parseLong)
+            .collect(Collectors.toUnmodifiableSet());
     }
 
     private static void loadDotEnvIfExists(Map<String, String> env) {

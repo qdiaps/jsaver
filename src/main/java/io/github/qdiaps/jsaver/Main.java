@@ -28,14 +28,14 @@ public class Main {
         AppConfig config = AppConfig.load();
         log.info("Environment: {}", config.environment());
         log.info("Working directory: {}", config.workDir());
-        log.info("Default command timeout: {}s", config.defaultTimeoutSeconds());
+        log.info("Default command timeout: {}s", config.commandTimeoutSeconds());
         log.info("Allowed users whitelist: {}", config.allowedChatIds().isEmpty() ? "ALL (Open)" : config.allowedChatIds());
 
         //CliTool.checkAll();
 
         //CliExecutor cliExecutor = new CliExecutor(config.workDir().toFile());
         TelegramBot tgBot = Bot.createBot(config);
-        var sender = new Sender(tgBot);
+        var sender = new Sender(tgBot, config);
         var messageRouter = new MessageRouter(sender);
         var receiver = new Receiver(messageRouter);
         var bot = new Bot(tgBot, receiver);

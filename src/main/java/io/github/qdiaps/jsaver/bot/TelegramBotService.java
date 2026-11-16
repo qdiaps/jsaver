@@ -154,7 +154,7 @@ public class TelegramBotService {
         String tool = tokens.getFirst();
 
         sendMessage(chatId, "⏳ Running `" + tool + "`...");
-        ExecutionResult result = cliExecutor.execute(tokens, Duration.ofSeconds(config.defaultTimeoutSeconds()));
+        ExecutionResult result = cliExecutor.execute(tokens, Duration.ofSeconds(config.commandTimeoutSeconds()));
 
         StringBuilder response = new StringBuilder();
         response.append(result.isSuccess() ? "✅ Command completed" : "❌ Command failed")
