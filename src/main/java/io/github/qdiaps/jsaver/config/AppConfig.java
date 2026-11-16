@@ -25,7 +25,8 @@ public record AppConfig(
         int maxRetryAttempts,
         long retryBaseDelayMs,
         int fallbackRetryAfterSeconds,
-        int maxRetryAfterSeconds
+        int maxRetryAfterSeconds,
+        String botUsername
 ) {
     public AppConfig {
         if (commandTimeoutSeconds <= 0)
@@ -38,11 +39,20 @@ public record AppConfig(
             throw new IllegalArgumentException("SENDER_FALLBACK_RETRY_AFTER_SEC must be > 0");
         if (maxRetryAfterSeconds < fallbackRetryAfterSeconds)
             throw new IllegalArgumentException("SENDER_MAX_RETRY_AFTER_SEC must be >= SENDER_FALLBACK_RETRY_AFTER_SEC");
+        if (!botUsername.endsWith("_bot"))
+            throw new IllegalArgumentException("TELEGRAM_BOT_USERNAME must be end with 'bot'");
     }
 
     public static AppConfig load() {
         Map<String, String> env = new HashMap<>(System.getenv());
         loadDotEnvIfExists(env);
+
+        String botUsername = getString(env, "TELEGRAM_BOT_USERNAME", "");
+        if (!botUsername.isBlank()) {
+            botUsername = botUsername.startsWith("@")
+                ? botUsername.substring(1).toLowerCase()
+                : botUsername.toLowerCase();
+        }
 
         return new AppConfig(
             getString(env, "TELEGRAM_BOT_TOKEN", ""),
@@ -54,7 +64,8 @@ public record AppConfig(
             getInt(env, "SENDER_RETRY_MAX_ATTEMPTS", 3),
             getLong(env, "SENDER_RETRY_BASE_DELAY_MS", 1000L),
             getInt(env, "SENDER_FALLBACK_RETRY_AFTER_SEC", 3),
-            getInt(env, "SENDER_MAX_RETRY_AFTER_SEC", 60)
+            getInt(env, "SENDER_MAX_RETRY_AFTER_SEC", 60),
+            botUsername
         );
     }
 

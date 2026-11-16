@@ -1,5 +1,8 @@
 package io.github.qdiaps.jsaver;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import java.util.concurrent.CountDownLatch;
 
 import com.pengrad.telegrambot.TelegramBot;
@@ -10,6 +13,10 @@ import io.github.qdiaps.jsaver.bot.Bot;
 import io.github.qdiaps.jsaver.bot.MessageRouter;
 import io.github.qdiaps.jsaver.bot.Receiver;
 import io.github.qdiaps.jsaver.bot.Sender;
+import io.github.qdiaps.jsaver.command.CommandRouter;
+import io.github.qdiaps.jsaver.command.HelpCommand;
+import io.github.qdiaps.jsaver.command.StartCommand;
+import io.github.qdiaps.jsaver.command.Command;
 import io.github.qdiaps.jsaver.config.AppConfig;
 import lombok.extern.slf4j.Slf4j;
 
@@ -36,6 +43,8 @@ public class Main {
         //CliExecutor cliExecutor = new CliExecutor(config.workDir().toFile());
         TelegramBot tgBot = Bot.createBot(config);
         var sender = new Sender(tgBot, config);
+        var commands = buildCommands(sender);
+        var commandRouter = new CommandRouter(commands, config);
         var messageRouter = new MessageRouter(sender);
         var receiver = new Receiver(messageRouter);
         var bot = new Bot(tgBot, receiver);
@@ -58,5 +67,15 @@ public class Main {
             Thread.currentThread().interrupt();
             log.info("Main thread interrupted. Exiting.");
         }
+    }
+
+    private static List<Command> buildCommands(Sender sender) {
+        List<Command> commands = new ArrayList<>();
+
+        commands.add(new StartCommand(sender));
+
+        commands.add(new HelpCommand(sender, Collections.unmodifiableList(commands)));
+
+        return List.copyOf(commands);
     }
 }
