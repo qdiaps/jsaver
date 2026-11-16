@@ -16,10 +16,11 @@ public class MessageRouter {
 
     public void route(Message message) {
         var metadata = extractMetadata(message);
+        var text = message.text().trim();
         log.debug("Received message from user [{}] in chat [{}], message [{}]: {}",
-                  metadata.userId(), metadata.chatId(), metadata.messageId(), message.text().trim());
+                  metadata.userId(), metadata.chatId(), metadata.messageId(), text);
 
-        var textPayload = new Payload.Text(message.text().trim());
+        var textPayload = new Payload.Text(text);
         sender.sendContent(metadata, textPayload);
     }
 

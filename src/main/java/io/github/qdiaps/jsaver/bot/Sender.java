@@ -73,7 +73,7 @@ public class Sender {
     ) {
         boolean useReply = initialReply;
         int maxAttempts = isImportant ? 3 : 1;
-        int attempt = 1;
+        int attempt = 0;
 
         while (attempt < maxAttempts) {
             R response;
@@ -107,7 +107,7 @@ public class Sender {
                 continue;
             } else if (code >= 500 && code < 600) {
                 log.warn("Telegram server error {} on attempt {}/{}: {}", code, attempt, maxAttempts, response.description());
-                if (attempt + 1 >= maxAttempts || !sleepBackoff(attempt))
+                if (attempt >= maxAttempts || !sleepBackoff(attempt))
                     return Optional.empty();
                 continue;
             }
