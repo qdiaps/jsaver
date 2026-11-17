@@ -9,6 +9,8 @@ import com.pengrad.telegrambot.TelegramBot;
 
 import org.slf4j.bridge.SLF4JBridgeHandler;
 
+import io.github.qdiaps.jsaver.access.AccessGuard;
+import io.github.qdiaps.jsaver.access.AccessState;
 import io.github.qdiaps.jsaver.bot.Bot;
 import io.github.qdiaps.jsaver.bot.MessageRouter;
 import io.github.qdiaps.jsaver.bot.Receiver;
@@ -35,13 +37,13 @@ public class Main {
         AppConfig config = AppConfig.load();
         log.info("Environment: {}", config.environment());
         log.info("Working directory: {}", config.workDir());
-        log.info("Default command timeout: {}s", config.commandTimeoutSeconds());
-        log.info("Allowed users whitelist: {}", config.allowedChatIds().isEmpty() ? "ALL (Open)" : config.allowedChatIds());
 
         //CliTool.checkAll();
 
         //CliExecutor cliExecutor = new CliExecutor(config.workDir().toFile());
         TelegramBot tgBot = Bot.createBot(config);
+        var startupAccessState = AccessState.load(config);
+        var accessGuard = new AccessGuard(startupAccessState);
         var sender = new Sender(tgBot, config);
         var commands = buildCommands(sender);
         var commandRouter = new CommandRouter(commands, config);

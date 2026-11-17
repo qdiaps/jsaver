@@ -87,11 +87,11 @@ public class TelegramBotService {
 
             log.info("Received message from user [{}] in chat [{}]: {}", userId, chatId, text);
 
-            if (!config.isUserAllowed(userId)) {
-                log.warn("Unauthorized access attempt from user ID: {}", userId);
-                sendMessage(chatId, "⛔ Access denied. Your user ID is not in the whitelist.");
-                return;
-            }
+            // if (!config.isUserAllowed(userId)) {
+            //     log.warn("Unauthorized access attempt from user ID: {}", userId);
+            //     sendMessage(chatId, "⛔ Access denied. Your user ID is not in the whitelist.");
+            //     return;
+            // }
 
             handleCommand(chatId, text);
         } catch (Exception e) {

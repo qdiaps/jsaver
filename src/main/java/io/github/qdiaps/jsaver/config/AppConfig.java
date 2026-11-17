@@ -21,12 +21,14 @@ public record AppConfig(
         Path workDir,
         long commandTimeoutSeconds,
         String environment,
-        Set<Long> allowedChatIds,
+        Set<Long> allowedUsers,
+        Set<Long> allowedChats,
         int maxRetryAttempts,
         long retryBaseDelayMs,
         int fallbackRetryAfterSeconds,
         int maxRetryAfterSeconds,
-        String botUsername
+        String botUsername,
+        long rootAdminId
 ) {
     public AppConfig {
         if (commandTimeoutSeconds <= 0)
@@ -41,6 +43,8 @@ public record AppConfig(
             throw new IllegalArgumentException("SENDER_MAX_RETRY_AFTER_SEC must be >= SENDER_FALLBACK_RETRY_AFTER_SEC");
         if (!botUsername.endsWith("bot"))
             throw new IllegalArgumentException("TELEGRAM_BOT_USERNAME must be end with 'bot'");
+        if (rootAdminId <= 0)
+            throw new IllegalArgumentException("TELEGRAM_ROOT_ADMIN_ID must be > 0");
     }
 
     public static AppConfig load() {
@@ -61,11 +65,13 @@ public record AppConfig(
             getLong(env, "COMMAND_TIMEOUT_SECONDS", 300L),
             getString(env, "APP_ENV", "dev").toLowerCase(),
             getLongSet(env, "ALLOWED_TELEGRAM_USERS"),
+            getLongSet(env, "ALLOWED_TELEGRAM_CHATS"),
             getInt(env, "SENDER_RETRY_MAX_ATTEMPTS", 3),
             getLong(env, "SENDER_RETRY_BASE_DELAY_MS", 1000L),
             getInt(env, "SENDER_FALLBACK_RETRY_AFTER_SEC", 3),
             getInt(env, "SENDER_MAX_RETRY_AFTER_SEC", 60),
-            botUsername
+            botUsername,
+            getLong(env, "TELEGRAM_ROOT_ADMIN_ID", 0)
         );
     }
 
@@ -142,10 +148,6 @@ public record AppConfig(
         } catch (IOException e) {
             log.warn("Failed to read .env file: {}", e.getMessage());
         }
-    }
-
-    public boolean isUserAllowed(long userId) {
-        return allowedChatIds.isEmpty() || allowedChatIds.contains(userId);
     }
 
     public boolean hasCustomBotApiUrl() {
