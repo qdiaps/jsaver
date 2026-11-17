@@ -20,31 +20,37 @@ public class AccessGuard {
     }
 
     public AccessDecision checkAccess(MessageMetadata metadata) {
+        Objects.requireNonNull(metadata);
+
         var state = stateRef.get();
-        if (state.rootAdminId() == metadata.userId() || state.admins().contains(metadata.userId())) {
+        var userId = metadata.userId();
+        if (userId != null &&
+            (state.rootAdminId() == userId || state.admins().contains(userId))) {
             return new AccessDecision.Allowed();
         } else if (state.globalMuteEnabled()) {
             return new AccessDecision.Denied(DenialReason.GLOBAL_MUTE, true);
         }
 
-        var userId = metadata.userId();
-        if (metadata.chatType() == ChatType.PRIVATE) {
-            var decision = checkUserAccess(state, userId, true);
-            if (decision instanceof AccessDecision.Allowed
-                && state.whitelistEnabled() && !state.allowedUsers().contains(userId))
-                return new AccessDecision.Denied(DenialReason.NOT_IN_WHITELIST, true);
-            else
-                return decision;
-        } else {
+        if (metadata.chatType() == ChatType.GROUP) {
             var chatId = metadata.chatId();
             if (state.bannedChats().contains(chatId)) {
                 return new AccessDecision.Denied(DenialReason.CHAT_BANNED, false);
             } else if (state.whitelistEnabled() && !state.allowedChats().contains(chatId)) {
                 return new AccessDecision.Denied(DenialReason.NOT_IN_WHITELIST, false);
             }
+
+            if (userId != null)
+                return checkUserAccess(state, userId, false);
+        } else if (metadata.chatType() == ChatType.PRIVATE) {
+            var decision = checkUserAccess(state, userId, true);
+            if (decision instanceof AccessDecision.Allowed
+                && state.whitelistEnabled() && !state.allowedUsers().contains(userId))
+                return new AccessDecision.Denied(DenialReason.NOT_IN_WHITELIST, true);
+            else
+                return decision;
         }
 
-        return checkUserAccess(state, userId, false);
+        return new AccessDecision.Allowed();
     }
 
     public boolean isAdmin(long userId) {
