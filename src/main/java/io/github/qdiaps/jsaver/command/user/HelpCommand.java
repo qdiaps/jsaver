@@ -1,9 +1,13 @@
-package io.github.qdiaps.jsaver.command;
+package io.github.qdiaps.jsaver.command.user;
 
 import java.util.List;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
+import io.github.qdiaps.jsaver.access.AccessGuard;
 import io.github.qdiaps.jsaver.bot.Sender;
+import io.github.qdiaps.jsaver.command.AdminCommand;
+import io.github.qdiaps.jsaver.command.Command;
 import io.github.qdiaps.jsaver.contract.MessageMetadata;
 import io.github.qdiaps.jsaver.contract.Payload;
 import lombok.RequiredArgsConstructor;
@@ -12,6 +16,7 @@ import lombok.RequiredArgsConstructor;
 public class HelpCommand implements Command {
     private final Sender sender;
     private final List<Command> commands;
+    private final AccessGuard accessGuard;
 
     public String name() {
         return "help";
@@ -22,9 +27,7 @@ public class HelpCommand implements Command {
     }
 
     public void execute(MessageMetadata metadata, List<String> args) {
-        String commandList = commands.stream()
-            .map(cmd -> "/" + cmd.name() + " – " + cmd.description())
-            .collect(Collectors.joining("\n"));
+        String userCommandList = formatCommands(cmd -> !(cmd instanceof AdminCommand));
 
         String helpText = """
             Как пользоваться:
@@ -39,7 +42,21 @@ public class HelpCommand implements Command {
 
             Доступные команды:
             %s
-            """.formatted(commandList);
+            """.formatted(userCommandList);
+
+        if (metadata.userId() != null && accessGuard.isAdmin(metadata.userId())) {
+            String adminCommandList = formatCommands(cmd -> cmd instanceof AdminCommand);
+            if (!adminCommandList.isEmpty())
+                helpText += "\nАдмин команды:\n" + adminCommandList;
+        }
+
         sender.sendContent(metadata, new Payload.Text(helpText));
+    }
+
+    private String formatCommands(Predicate<Command> filter) {
+        return commands.stream()
+            .filter(filter)
+            .map(cmd -> "/" + cmd.name() + " - " + cmd.description())
+            .collect(Collectors.joining("\n"));
     }
 }

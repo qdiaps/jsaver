@@ -19,6 +19,10 @@ public class AccessGuard {
         stateRef = new AtomicReference<>(Objects.requireNonNull(startupState));
     }
 
+    public AccessState getState() {
+        return stateRef.get();
+    }
+
     public AccessDecision checkAccess(MessageMetadata metadata) {
         Objects.requireNonNull(metadata);
 

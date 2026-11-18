@@ -2,9 +2,11 @@ package io.github.qdiaps.jsaver.command;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+import io.github.qdiaps.jsaver.access.AccessGuard;
 import io.github.qdiaps.jsaver.config.AppConfig;
 import io.github.qdiaps.jsaver.contract.MessageMetadata;
 import lombok.extern.slf4j.Slf4j;
@@ -13,8 +15,13 @@ import lombok.extern.slf4j.Slf4j;
 public class CommandRouter {
     private final Map<String, Command> commands;
     private final String botUsername;
+    private final AccessGuard accessGuard;
 
-    public CommandRouter(List<Command> commandList, AppConfig config) {
+    public CommandRouter(List<Command> commandList, AppConfig config, AccessGuard accessGuard) {
+        Objects.requireNonNull(commandList);
+        Objects.requireNonNull(config);
+        this.accessGuard = Objects.requireNonNull(accessGuard);
+
         botUsername = config.botUsername();
         commands = commandList.stream()
             .collect(Collectors.toUnmodifiableMap(
@@ -42,6 +49,12 @@ public class CommandRouter {
         if (command == null) {
             log.debug("Unknown command [/{}] in chat [{}]", rawCommand, metadata.chatId());
             return;
+        } else if (command instanceof AdminCommand) {
+            if (metadata.userId() == null || !accessGuard.isAdmin(metadata.userId())) {
+                log.debug("Unauthorized admin command [/{}] from user [{}] in chat [{}]",
+                         rawCommand, metadata.userId(), metadata.chatId());
+                return;
+            }
         }
 
         List<String> args = (parts.length > 1 && !parts[1].isBlank())

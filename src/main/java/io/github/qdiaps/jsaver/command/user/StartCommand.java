@@ -1,8 +1,9 @@
-package io.github.qdiaps.jsaver.command;
+package io.github.qdiaps.jsaver.command.user;
 
 import java.util.List;
 
 import io.github.qdiaps.jsaver.bot.Sender;
+import io.github.qdiaps.jsaver.command.Command;
 import io.github.qdiaps.jsaver.contract.MessageMetadata;
 import io.github.qdiaps.jsaver.contract.Payload;
 import lombok.RequiredArgsConstructor;

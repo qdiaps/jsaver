@@ -15,10 +15,11 @@ import io.github.qdiaps.jsaver.bot.Bot;
 import io.github.qdiaps.jsaver.bot.MessageRouter;
 import io.github.qdiaps.jsaver.bot.Receiver;
 import io.github.qdiaps.jsaver.bot.Sender;
-import io.github.qdiaps.jsaver.command.CommandRouter;
-import io.github.qdiaps.jsaver.command.HelpCommand;
-import io.github.qdiaps.jsaver.command.StartCommand;
 import io.github.qdiaps.jsaver.command.Command;
+import io.github.qdiaps.jsaver.command.CommandRouter;
+import io.github.qdiaps.jsaver.command.admin.AccessCommand;
+import io.github.qdiaps.jsaver.command.user.HelpCommand;
+import io.github.qdiaps.jsaver.command.user.StartCommand;
 import io.github.qdiaps.jsaver.config.AppConfig;
 import lombok.extern.slf4j.Slf4j;
 
@@ -38,15 +39,12 @@ public class Main {
         log.info("Environment: {}", config.environment());
         log.info("Working directory: {}", config.workDir());
 
-        //CliTool.checkAll();
-
-        //CliExecutor cliExecutor = new CliExecutor(config.workDir().toFile());
         TelegramBot tgBot = Bot.createBot(config);
         var startupAccessState = AccessState.load(config);
         var accessGuard = new AccessGuard(startupAccessState);
         var sender = new Sender(tgBot, config);
-        var commands = buildCommands(sender);
-        var commandRouter = new CommandRouter(commands, config);
+        var commands = buildCommands(sender, accessGuard);
+        var commandRouter = new CommandRouter(commands, config, accessGuard);
         var messageRouter = new MessageRouter(commandRouter, accessGuard, sender);
         var receiver = new Receiver(messageRouter);
         var bot = new Bot(tgBot, receiver);
@@ -71,12 +69,16 @@ public class Main {
         }
     }
 
-    private static List<Command> buildCommands(Sender sender) {
+    private static List<Command> buildCommands(Sender sender, AccessGuard accessGuard) {
         List<Command> commands = new ArrayList<>();
 
+        // User commands
         commands.add(new StartCommand(sender));
 
-        commands.add(new HelpCommand(sender, Collections.unmodifiableList(commands)));
+        // Admin commands
+        commands.add(new AccessCommand(sender, accessGuard));
+
+        commands.add(new HelpCommand(sender, Collections.unmodifiableList(commands), accessGuard));
 
         return List.copyOf(commands);
     }
