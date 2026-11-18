@@ -29,43 +29,59 @@ public class Main {
         SLF4JBridgeHandler.removeHandlersForRootLogger();
         SLF4JBridgeHandler.install();
 
+        Thread.setDefaultUncaughtExceptionHandler((thread, throwable) ->
+            log.error("Uncaught exception in thread [{}]", thread.getName(), throwable)
+        );
+
         log.info("=================================================");
         log.info("Starting jsaver Bot Application");
         log.info("Java Version: {} ({})", System.getProperty("java.version"), System.getProperty("java.vendor"));
         log.info("OS: {} {} ({})", System.getProperty("os.name"), System.getProperty("os.version"), System.getProperty("os.arch"));
         log.info("=================================================");
 
-        AppConfig config = AppConfig.load();
-        log.info("Environment: {}", config.environment());
-        log.info("Working directory: {}", config.workDir());
-
-        TelegramBot tgBot = Bot.createBot(config);
-        var startupAccessState = AccessState.load(config);
-        var accessGuard = new AccessGuard(startupAccessState);
-        var sender = new Sender(tgBot, config);
-        var commands = buildCommands(sender, accessGuard);
-        var commandRouter = new CommandRouter(commands, config, accessGuard);
-        var messageRouter = new MessageRouter(commandRouter, accessGuard, sender);
-        var receiver = new Receiver(messageRouter);
-        var bot = new Bot(tgBot, receiver);
-
-        var shutdownLatch = new CountDownLatch(1);
-
-        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-            log.info("Shutdown signal received. Performing graceful shutdown...");
-            bot.stop();
-            shutdownLatch.countDown();
-            log.info("Shutdown complete.");
-        }, "shutdown-hook"));
-
-        bot.start();
-        log.info("jsaver application is running. Press Ctrl+C or send SIGTERM to stop.");
-
         try {
+            AppConfig config = AppConfig.load();
+            log.info("Environment: [{}], working directory: [{}]", config.environment(), config.workDir());
+
+            var startupAccessState = AccessState.load(config);
+            log.info("AccessState loaded: rootAdmin=[{}], whitelist=[{}], globalMute=[{}], admins=[{}]",
+                     startupAccessState.rootAdminId(),
+                     startupAccessState.whitelistEnabled(),
+                     startupAccessState.globalMuteEnabled(),
+                     startupAccessState.admins().size());
+
+            TelegramBot tgBot = Bot.createBot(config);
+            var accessGuard = new AccessGuard(startupAccessState);
+            var sender = new Sender(tgBot, config);
+            var commands = buildCommands(sender, accessGuard);
+            var commandRouter = new CommandRouter(commands, config, accessGuard);
+            var messageRouter = new MessageRouter(commandRouter, accessGuard, sender);
+            var receiver = new Receiver(messageRouter);
+            var bot = new Bot(tgBot, receiver);
+
+            bot.start();
+
+            var shutdownLatch = new CountDownLatch(1);
+            Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+                log.info("Shutdown signal received. Performing graceful shutdown...");
+                try {
+                    bot.stop();
+                } catch (Exception e) {
+                    log.error("Error during bot shutdown", e);
+                } finally {
+                    shutdownLatch.countDown();
+                    log.info("Shutdown complete.");
+                }
+            }, "shutdown-hook"));
+
+            log.info("jsaver application is running. Press Ctrl+C or send SIGTERM to stop.");
             shutdownLatch.await();
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             log.info("Main thread interrupted. Exiting.");
+        } catch (Exception e) {
+            log.error("Fatal error during application startup", e);
+            System.exit(1);
         }
     }
 
