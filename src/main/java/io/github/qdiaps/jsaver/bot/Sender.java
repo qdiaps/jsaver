@@ -1,9 +1,13 @@
 package io.github.qdiaps.jsaver.bot;
 
 import java.time.Duration;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Function;
 
 import com.pengrad.telegrambot.TelegramBot;
@@ -14,17 +18,27 @@ import com.pengrad.telegrambot.response.BaseResponse;
 import com.pengrad.telegrambot.response.SendResponse;
 
 import io.github.qdiaps.jsaver.config.AppConfig;
+import io.github.qdiaps.jsaver.contract.ChatType;
 import io.github.qdiaps.jsaver.contract.DeliveryReport;
+import io.github.qdiaps.jsaver.contract.FailureCategory;
 import io.github.qdiaps.jsaver.contract.MessageMetadata;
 import io.github.qdiaps.jsaver.contract.Payload;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
-@RequiredArgsConstructor
 public class Sender {
+    private static final Duration THROTTLE_COOLDOWN = Duration.ofSeconds(15);
+
+    private record ThrottleKey(long chatId, String text) {}
+
     private final TelegramBot bot;
     private final AppConfig config;
+    private final ConcurrentHashMap<ThrottleKey, Instant> lastFailureSent = new ConcurrentHashMap<>();
+
+    public Sender(TelegramBot bot, AppConfig config) {
+        this.bot = Objects.requireNonNull(bot);
+        this.config = Objects.requireNonNull(config);
+    }
 
     public DeliveryReport sendContent(MessageMetadata metadata, Payload payload) {
         return sendContent(metadata, List.of(payload));
@@ -44,15 +58,68 @@ public class Sender {
                 isReply = false;
         }
 
+        long deliveredCount = items.stream().filter(DeliveryReport.Item::delivered).count();
+        if (deliveredCount < items.size()) {
+            log.warn("Incomplete delivery to chat [{}]: delivered {}/{} items",
+                     metadata.chatId(), deliveredCount, items.size());
+        } else {
+            log.debug("Delivered {}/{} items to chat [{}]",
+                      deliveredCount, items.size(), metadata.chatId());
+        }
+
         return new DeliveryReport(metadata, List.copyOf(items));
+    }
+
+    public void sendFailure(MessageMetadata metadata, String text, FailureCategory category) {
+        var payload = new Payload.Text(text);
+
+        switch (category) {
+            case PRIVATE_ONLY -> {
+                if (metadata.chatType() == ChatType.PRIVATE) {
+                    deliverFailure(metadata, payload, category, text);
+                } else {
+                    log.debug("Suppressed PRIVATE_ONLY failure in group chat [{}]: {}",
+                             metadata.chatId(), text);
+                }
+            }
+            case THROTTLED -> {
+                var now = Instant.now();
+
+                if (lastFailureSent.size() > 500) {
+                    lastFailureSent.entrySet().removeIf(
+                        entry -> Duration.between(entry.getValue(), now).compareTo(THROTTLE_COOLDOWN) >= 0
+                    );
+                }
+
+                var shouldSend = new AtomicBoolean(false);
+                var key = new ThrottleKey(metadata.chatId(), text);
+
+                lastFailureSent.compute(key, (k, lastSent) -> {
+                    if (lastSent == null || Duration.between(lastSent, now).compareTo(THROTTLE_COOLDOWN) >= 0) {
+                        shouldSend.set(true);
+                        return now;
+                    }
+                    return lastSent;
+                });
+
+                if (shouldSend.get())
+                    deliverFailure(metadata, payload, category, text);
+                else
+                    log.debug("Throttled failure notification for chat [{}]: {}", metadata.chatId(), text);
+            }
+            case CRITICAL -> deliverFailure(metadata, payload, category, text);
+        }
     }
 
     private DeliveryReport.Item sendSinglePayload(
         MessageMetadata metadata, Payload payload, boolean isImportant, boolean isReply
     ) {
-        return executeWithRetry(useReply -> bot.execute(buildRequest(metadata, payload, useReply)), isReply, isImportant)
-            .map(response -> new DeliveryReport.Item(payload, extractFileIds(payload, response), true))
-            .orElseGet(() -> new DeliveryReport.Item(payload, List.of(), false));
+        var response = executeWithRetry(useReply -> bot.execute(buildRequest(metadata, payload, useReply)), isReply, isImportant);
+        if (response.isEmpty()) {
+            log.warn("Failed to deliver [{}] to chat [{}]", payload.getClass().getSimpleName(), metadata.chatId());
+            return new DeliveryReport.Item(payload, List.of(), false);
+        }
+        return new DeliveryReport.Item(payload, extractFileIds(payload, response.get()), true);
     }
 
     private AbstractSendRequest<?> buildRequest(
@@ -101,10 +168,12 @@ public class Sender {
                 attempt--;
                 continue;
             } else if (code == 429) {
-                int retryAfter = (response.parameters() != null && response.parameters().retryAfter() != null)
+                var retryAfter = (response.parameters() != null && response.parameters().retryAfter() != null)
                     ? response.parameters().retryAfter() : config.fallbackRetryAfterSeconds();
-                log.warn("Rate limited (429), sleeping for {}s", retryAfter);
-                if (attempt >= maxAttempts || !sleepSeconds(Math.min(retryAfter, config.maxRetryAfterSeconds())))
+                var sleepSec = Math.min(retryAfter, config.maxRetryAfterSeconds());
+                log.warn("Rate limited (429), sleeping for {}s (requested {}s) on attempt {}/{}",
+                         sleepSec, retryAfter, attempt, maxAttempts);
+                if (attempt >= maxAttempts || !sleepSeconds(sleepSec))
                     return Optional.empty();
                 continue;
             } else if (code >= 500 && code < 600) {
@@ -144,7 +213,18 @@ public class Sender {
             return true;
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
+            log.warn("Sender thread interrupted during sleep ({}ms)", duration.toMillis());
             return false;
         }
+    }
+
+    private void deliverFailure(MessageMetadata metadata, Payload payload, FailureCategory category, String text) {
+        if (!sendSinglePayload(metadata, payload, true, true).delivered())
+            return;
+
+        if (category == FailureCategory.CRITICAL)
+            log.warn("Sent [{}] failure notification to chat [{}]: {}", category, metadata.chatId(), text);
+        else
+            log.info("Sent [{}] failure notification to chat [{}]: {}", category, metadata.chatId(), text);
     }
 }

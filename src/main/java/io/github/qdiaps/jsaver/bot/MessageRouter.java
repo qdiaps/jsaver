@@ -9,8 +9,8 @@ import io.github.qdiaps.jsaver.command.CommandRouter;
 import io.github.qdiaps.jsaver.contract.AccessDecision;
 import io.github.qdiaps.jsaver.contract.ChatType;
 import io.github.qdiaps.jsaver.contract.DenialReason;
+import io.github.qdiaps.jsaver.contract.FailureCategory;
 import io.github.qdiaps.jsaver.contract.MessageMetadata;
-import io.github.qdiaps.jsaver.contract.Payload;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -23,9 +23,17 @@ public class MessageRouter {
 
     public void route(Message message) {
         var metadata = extractMetadata(message);
+        log.debug("Routing message [{}] from user [{}] in chat [{}] ({})",
+                  metadata.messageId(), metadata.userId(), metadata.chatId(), metadata.chatType());
 
         if (!checkAccess(metadata))
             return;
+
+        if (message.text() == null || message.text().isBlank()) {
+            log.debug("Ignored non-text or blank message [{}] in chat [{}]",
+                      metadata.messageId(), metadata.chatId());
+            return;
+        }
 
         var text = message.text().trim();
 
@@ -33,10 +41,14 @@ public class MessageRouter {
             commandRouter.route(metadata, text);
             return;
         }
+
+        log.debug("Received plain text message [{}] from user [{}] in chat [{}]",
+                  metadata.messageId(), metadata.userId(), metadata.chatId());
     }
 
     private MessageMetadata extractMetadata(Message message) {
-        Long userId = message.senderChat() == null ? message.from().id() : null;
+        Long userId = (message.senderChat() == null && message.from() != null)
+            ? message.from().id() : null;
         long chatId = message.chat().id();
         int messageId = message.messageId();
         Integer threadId = Boolean.TRUE.equals(message.isTopicMessage()) ? message.messageThreadId() : null;
@@ -54,7 +66,7 @@ public class MessageRouter {
                     if (reason == DenialReason.GLOBAL_MUTE)
                         text = accessGuard.getGlobalMuteReason().orElse(text);
 
-                    sender.sendContent(metadata, new Payload.Text(text));
+                    sender.sendFailure(metadata, text, FailureCategory.THROTTLED);
                     log.info("Access denied because [{}] for chat [{}], user [{}]",
                               reason.name(), metadata.chatId(), metadata.userId());
                 } else {

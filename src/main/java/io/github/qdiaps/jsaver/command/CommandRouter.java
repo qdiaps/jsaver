@@ -22,7 +22,10 @@ public class CommandRouter {
         Objects.requireNonNull(config);
         this.accessGuard = Objects.requireNonNull(accessGuard);
 
-        botUsername = config.botUsername();
+        var configuredUsername = config.botUsername().toLowerCase();
+        botUsername = configuredUsername.startsWith("@")
+            ? configuredUsername.substring(1)
+            : configuredUsername;
         commands = commandList.stream()
             .collect(Collectors.toUnmodifiableMap(
                     cmd -> cmd.name().toLowerCase(),
@@ -40,9 +43,13 @@ public class CommandRouter {
         int atIndex = rawCommand.indexOf('@');
         if (atIndex != -1) {
             String targetBot = rawCommand.substring(atIndex + 1);
-            if (!targetBot.equals(botUsername))
+            if (!targetBot.equals(botUsername)) {
+                log.debug("Command [{}] addressed to another bot [@{}], ignoring", rawCommand, targetBot);
                 return;
+            }
             rawCommand = rawCommand.substring(0, atIndex);
+            if (rawCommand.isEmpty())
+                return;
         }
 
         Command command = commands.get(rawCommand);
