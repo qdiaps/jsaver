@@ -1,21 +1,34 @@
 package io.github.qdiaps.jsaver.bot;
 
+import java.util.List;
+import java.util.Objects;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.RejectedExecutionException;
+import java.util.concurrent.TimeUnit;
+
 import com.pengrad.telegrambot.TelegramBot;
 import com.pengrad.telegrambot.UpdatesListener;
+
 import io.github.qdiaps.jsaver.config.AppConfig;
 import lombok.extern.slf4j.Slf4j;
 
-import java.util.Objects;
-
 @Slf4j
 public class Bot {
-    private final Receiver receiver;
+    private static final int SHUTDOWN_TIMEOUT_SECONDS = 30;
 
-    private TelegramBot bot;
+    private final Receiver receiver;
+    private final TelegramBot bot;
+    private final ExecutorService updateExecutor;
 
     public Bot(TelegramBot bot, Receiver receiver) {
         this.bot = Objects.requireNonNull(bot);
         this.receiver = Objects.requireNonNull(receiver);
+
+        var threadFactory = Thread.ofVirtual()
+            .name("tg-update-", 0)
+            .factory();
+        updateExecutor = Executors.newThreadPerTaskExecutor(threadFactory);
     }
 
     public static TelegramBot createBot(AppConfig config) {
@@ -45,13 +58,22 @@ public class Bot {
 
         bot.setUpdatesListener(
             updates -> {
-                for (var update : updates)
-                    Thread.ofVirtual().name("tg-update-", update.updateId()).start(() -> receiver.handle(update));
+                var lastConfirmedId = UpdatesListener.CONFIRMED_UPDATES_NONE;
+                for (var update : updates) {
+                    try {
+                        updateExecutor.execute(() -> receiver.handle(update));
+                        lastConfirmedId = update.updateId();
+                    } catch (RejectedExecutionException e) {
+                        log.warn("Rejected update [{}] because bot is shutting down", update.updateId());
+                        return lastConfirmedId;
+                    }
+                }
                 return UpdatesListener.CONFIRMED_UPDATES_ALL;
             },
             e -> {
                 if (e.response() != null) {
-                    log.error("Telegram API error response: {} - {}", e.response().errorCode(), e.response().description());
+                    log.error("Telegram API error response: {} - {}",
+                              e.response().errorCode(), e.response().description());
                 } else {
                     log.error("Telegram network/connection error: {}", e.getMessage());
                 }
@@ -62,9 +84,33 @@ public class Bot {
     }
 
     public void stop() {
-        if (bot != null) {
-            log.info("Shutting down Telegram Bot...");
+        if (bot == null)
+            return;
+
+        log.info("Stopping Telegram updates listener...");
+        bot.removeGetUpdatesListener();
+
+        log.info("Shutting down update executor (waiting up to {}s for active tasks)...", SHUTDOWN_TIMEOUT_SECONDS);
+        updateExecutor.shutdown();
+
+        try {
+            if (!updateExecutor.awaitTermination(SHUTDOWN_TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
+                log.warn("Active tasks did not finish within {}s, forcing interruption...", SHUTDOWN_TIMEOUT_SECONDS);
+                List<Runnable> dropped = updateExecutor.shutdownNow();
+                log.warn("Forced shutdown initiated; {} queued tasks were not started", dropped.size());
+
+                if (!updateExecutor.awaitTermination(5, TimeUnit.SECONDS))
+                    log.error("Update executor did not terminate after forced shutdown");
+            } else {
+                log.info("All active tasks completed gracefully");
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            log.warn("Interrupted while waiting for update executor termination, forcing shutdownNow");
+            updateExecutor.shutdownNow();
+        } finally {
             bot.shutdown();
+            log.info("Telegram HTTP client shut down");
         }
     }
 }
