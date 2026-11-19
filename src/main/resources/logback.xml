@@ -1,7 +1,11 @@
-<configuration scan="true" scanPeriod="30 seconds">
+<configuration>
     <variable name="APP_ENV" value="${APP_ENV:-dev}" />
     <variable name="LOG_DIR" value="${LOG_DIR:-./logs}" />
     <variable name="LOG_LEVEL" value="${LOG_LEVEL:-INFO}" />
+
+    <contextListener class="ch.qos.logback.classic.jul.LevelChangePropagator">
+        <resetJUL>true</resetJUL>
+    </contextListener>
 
     <!-- Console Appender with colored output for terminal / development -->
     <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
@@ -30,6 +34,7 @@
     <logger name="io.github.qdiaps.jsaver" level="${APP_LOG_LEVEL:-DEBUG}" />
     <logger name="okhttp3" level="WARN" />
     <logger name="com.pengrad.telegrambot" level="INFO" />
+    <logger name="jdk.event.security" level="INFO" />
 
     <root level="${LOG_LEVEL}">
         <appender-ref ref="CONSOLE" />

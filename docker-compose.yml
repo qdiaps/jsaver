@@ -22,13 +22,12 @@ services:
     restart: unless-stopped
     depends_on:
       - telegram-bot-api
+    env_file:
+      - .env
     environment:
-      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
       TELEGRAM_BOT_API_URL: http://telegram-bot-api:8081/bot
-      ALLOWED_TELEGRAM_USERS: ${ALLOWED_TELEGRAM_USERS:-}
       APP_ENV: ${APP_ENV:-prod}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
-      JSAVER_COMMAND_TIMEOUT_SECONDS: ${JSAVER_COMMAND_TIMEOUT_SECONDS:-300}
     volumes:
       - ./data:/app/data
       - ./logs:/app/logs

@@ -48,8 +48,8 @@ COPY --from=builder --chown=appuser:appuser /build/target/jsaver.jar /app/jsaver
 USER appuser
 
 ENV JAVA_OPTS="-XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0 -XX:+ExitOnOutOfMemoryError"
-ENV APP_ENV="prod"
-ENV JSAVER_WORK_DIR="/app/data"
+ENV APP_ENV="dev"
+ENV WORK_DIR="/app/data"
 ENV LOG_DIR="/app/logs"
 
 ENTRYPOINT ["sh", "-c", "exec java $JAVA_OPTS -jar /app/jsaver.jar"]

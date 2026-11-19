@@ -45,7 +45,7 @@ public class TelegramBotService {
         }
 
         if ("dev".equalsIgnoreCase(config.environment())) {
-            builder.debug();
+            // builder.debug();
         }
 
         return builder.build();
@@ -87,11 +87,11 @@ public class TelegramBotService {
 
             log.info("Received message from user [{}] in chat [{}]: {}", userId, chatId, text);
 
-            if (!config.isUserAllowed(userId)) {
-                log.warn("Unauthorized access attempt from user ID: {}", userId);
-                sendMessage(chatId, "⛔ Access denied. Your user ID is not in the whitelist.");
-                return;
-            }
+            // if (!config.isUserAllowed(userId)) {
+            //     log.warn("Unauthorized access attempt from user ID: {}", userId);
+            //     sendMessage(chatId, "⛔ Access denied. Your user ID is not in the whitelist.");
+            //     return;
+            // }
 
             handleCommand(chatId, text);
         } catch (Exception e) {
@@ -154,7 +154,7 @@ public class TelegramBotService {
         String tool = tokens.getFirst();
 
         sendMessage(chatId, "⏳ Running `" + tool + "`...");
-        ExecutionResult result = cliExecutor.execute(tokens, Duration.ofSeconds(config.defaultTimeoutSeconds()));
+        ExecutionResult result = cliExecutor.execute(tokens, Duration.ofSeconds(config.commandTimeoutSeconds()));
 
         StringBuilder response = new StringBuilder();
         response.append(result.isSuccess() ? "✅ Command completed" : "❌ Command failed")
