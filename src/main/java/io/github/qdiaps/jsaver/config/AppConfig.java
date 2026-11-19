@@ -28,7 +28,9 @@ public record AppConfig(
         int fallbackRetryAfterSeconds,
         int maxRetryAfterSeconds,
         String botUsername,
-        long rootAdminId
+        long rootAdminId,
+        int shutdownTimeoutSeconds,
+        int throttledCooldownSec
 ) {
     public AppConfig {
         if (commandTimeoutSeconds <= 0)
@@ -45,6 +47,10 @@ public record AppConfig(
             throw new IllegalArgumentException("TELEGRAM_BOT_USERNAME must be end with 'bot'");
         if (rootAdminId <= 0)
             throw new IllegalArgumentException("TELEGRAM_ROOT_ADMIN_ID must be > 0");
+        if (shutdownTimeoutSeconds <= 0)
+            throw new IllegalArgumentException("SHUTDOWN_TIMEOUT_SECONDS must be > 0");
+        if (throttledCooldownSec <= 0)
+            throw new IllegalArgumentException("SENDER_THROTTLED_COOLDOWN_SEC must be > 0");
     }
 
     public static AppConfig load() {
@@ -71,7 +77,9 @@ public record AppConfig(
             getInt(env, "SENDER_FALLBACK_RETRY_AFTER_SEC", 3),
             getInt(env, "SENDER_MAX_RETRY_AFTER_SEC", 60),
             botUsername,
-            getLong(env, "TELEGRAM_ROOT_ADMIN_ID", 0)
+            getLong(env, "TELEGRAM_ROOT_ADMIN_ID", 0),
+            getInt(env, "SHUTDOWN_TIMEOUT_SECONDS", 30),
+            getInt(env, "SENDER_THROTTLED_COOLDOWN_SEC", 15)
         );
     }
 

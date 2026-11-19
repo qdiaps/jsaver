@@ -57,7 +57,7 @@ public class Main {
             var commandRouter = new CommandRouter(commands, config, accessGuard);
             var messageRouter = new MessageRouter(commandRouter, accessGuard, sender);
             var receiver = new Receiver(messageRouter);
-            var bot = new Bot(tgBot, receiver);
+            var bot = new Bot(tgBot, receiver, config);
 
             bot.start();
 

@@ -15,15 +15,15 @@ import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 public class Bot {
-    private static final int SHUTDOWN_TIMEOUT_SECONDS = 30;
-
     private final Receiver receiver;
     private final TelegramBot bot;
     private final ExecutorService updateExecutor;
+    private final AppConfig config;
 
-    public Bot(TelegramBot bot, Receiver receiver) {
+    public Bot(TelegramBot bot, Receiver receiver, AppConfig config) {
         this.bot = Objects.requireNonNull(bot);
         this.receiver = Objects.requireNonNull(receiver);
+        this.config = Objects.requireNonNull(config);
 
         var threadFactory = Thread.ofVirtual()
             .name("tg-update-", 0)
@@ -90,12 +90,12 @@ public class Bot {
         log.info("Stopping Telegram updates listener...");
         bot.removeGetUpdatesListener();
 
-        log.info("Shutting down update executor (waiting up to {}s for active tasks)...", SHUTDOWN_TIMEOUT_SECONDS);
+        log.info("Shutting down update executor (waiting up to {}s for active tasks)...", config.shutdownTimeoutSeconds());
         updateExecutor.shutdown();
 
         try {
-            if (!updateExecutor.awaitTermination(SHUTDOWN_TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
-                log.warn("Active tasks did not finish within {}s, forcing interruption...", SHUTDOWN_TIMEOUT_SECONDS);
+            if (!updateExecutor.awaitTermination(config.shutdownTimeoutSeconds(), TimeUnit.SECONDS)) {
+                log.warn("Active tasks did not finish within {}s, forcing interruption...", config.shutdownTimeoutSeconds());
                 List<Runnable> dropped = updateExecutor.shutdownNow();
                 log.warn("Forced shutdown initiated; {} queued tasks were not started", dropped.size());
 

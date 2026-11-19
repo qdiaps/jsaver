@@ -27,17 +27,17 @@ import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 public class Sender {
-    private static final Duration THROTTLE_COOLDOWN = Duration.ofSeconds(15);
-
     private record ThrottleKey(long chatId, String text) {}
 
     private final TelegramBot bot;
     private final AppConfig config;
     private final ConcurrentHashMap<ThrottleKey, Instant> lastFailureSent = new ConcurrentHashMap<>();
+    private final Duration THROTTLE_COOLDOWN;
 
     public Sender(TelegramBot bot, AppConfig config) {
         this.bot = Objects.requireNonNull(bot);
         this.config = Objects.requireNonNull(config);
+        THROTTLE_COOLDOWN = Duration.ofSeconds(config.throttledCooldownSec());
     }
 
     public DeliveryReport sendContent(MessageMetadata metadata, Payload payload) {
