@@ -11,6 +11,7 @@ import io.github.qdiaps.jsaver.contract.ChatType;
 import io.github.qdiaps.jsaver.contract.DenialReason;
 import io.github.qdiaps.jsaver.contract.FailureCategory;
 import io.github.qdiaps.jsaver.contract.MessageMetadata;
+import io.github.qdiaps.jsaver.telemetry.BotTelemetry;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -20,30 +21,34 @@ public class MessageRouter {
     private final CommandRouter commandRouter;
     private final AccessGuard accessGuard;
     private final Sender sender;
+    private final BotTelemetry telemetry;
 
     public void route(Message message) {
         var metadata = extractMetadata(message);
         log.debug("Routing message [{}] from user [{}] in chat [{}] ({})",
                   metadata.messageId(), metadata.userId(), metadata.chatId(), metadata.chatType());
 
-        if (!checkAccess(metadata))
-            return;
-
         if (message.text() == null || message.text().isBlank()) {
             log.debug("Ignored non-text or blank message [{}] in chat [{}]",
                       metadata.messageId(), metadata.chatId());
+            telemetry.recordIgnored();
             return;
         }
 
         var text = message.text().trim();
 
+        telemetry.onRequestStarted();
         if (isCommand(message)) {
-            commandRouter.route(metadata, text);
-            return;
+            if (checkAccess(metadata))
+                commandRouter.route(metadata, text);
+            else
+                telemetry.recordFailure();
+        } else {
+            log.debug("Received plain text message [{}] from user [{}] in chat [{}]",
+                      metadata.messageId(), metadata.userId(), metadata.chatId());
+            telemetry.recordRejected();
         }
-
-        log.debug("Received plain text message [{}] from user [{}] in chat [{}]",
-                  metadata.messageId(), metadata.userId(), metadata.chatId());
+        telemetry.onRequestFinished();
     }
 
     private MessageMetadata extractMetadata(Message message) {

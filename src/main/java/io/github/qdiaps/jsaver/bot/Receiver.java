@@ -4,6 +4,7 @@ import com.pengrad.telegrambot.model.Chat;
 import com.pengrad.telegrambot.model.Message;
 import com.pengrad.telegrambot.model.Update;
 
+import io.github.qdiaps.jsaver.telemetry.BotTelemetry;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -11,15 +12,20 @@ import lombok.extern.slf4j.Slf4j;
 @RequiredArgsConstructor
 public class Receiver {
     private final MessageRouter router;
+    private final BotTelemetry telemetry;
 
     public void handle(Update update) {
         try {
-            if (update.message() == null)
+            if (update.message() == null) {
+                telemetry.recordIgnored();
                 return;
+            }
 
             Message message = update.message();
-            if (!isValid(message))
+            if (!isValid(message)) {
+                telemetry.recordIgnored();
                 return;
+            }
 
             router.route(message);
         } catch (Exception e) {

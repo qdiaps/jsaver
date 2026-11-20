@@ -63,10 +63,33 @@ public class BotTelemetry {
         );
     }
 
-    public void onRequestStarted() { inFlightRequests.incrementAndGet(); }
-    public void onRequestFinished() { inFlightRequests.decrementAndGet(); }
-    public void recordSuccess() { succeededRequests.increment(); }
-    public void recordRejected() { rejectedRequests.increment(); }
-    public void recordFailure() { failedRequests.increment(); }
-    public void recordIgnored() { ignoredUpdates.increment(); }
+    public void onRequestStarted() {
+        inFlightRequests.incrementAndGet();
+        log.debug("Telemetry: request started");
+    }
+
+    public void onRequestFinished() {
+        inFlightRequests.decrementAndGet();
+        log.debug("Telemetry: request finished");
+    }
+
+    public void recordSuccess() {
+        succeededRequests.increment();
+        log.debug("Telemetry: record success");
+    }
+
+    public void recordRejected() {
+        rejectedRequests.increment();
+        log.debug("Telemetry: record rejected");
+    }
+
+    public void recordFailure() {
+        failedRequests.increment();
+        log.debug("Telemetry: record failure");
+    }
+
+    public void recordIgnored() {
+        ignoredUpdates.increment();
+        log.debug("Telemetry: record ignored");
+    }
 }

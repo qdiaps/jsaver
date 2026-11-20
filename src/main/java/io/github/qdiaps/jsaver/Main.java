@@ -1,5 +1,8 @@
 package io.github.qdiaps.jsaver;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -21,6 +24,7 @@ import io.github.qdiaps.jsaver.command.admin.AccessCommand;
 import io.github.qdiaps.jsaver.command.user.HelpCommand;
 import io.github.qdiaps.jsaver.command.user.StartCommand;
 import io.github.qdiaps.jsaver.config.AppConfig;
+import io.github.qdiaps.jsaver.telemetry.BotTelemetry;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
@@ -41,7 +45,10 @@ public class Main {
 
         try {
             AppConfig config = AppConfig.load();
+            prepareWorkDir(config.workDir());
             log.info("Environment: [{}], working directory: [{}]", config.environment(), config.workDir());
+
+            var telemetry = new BotTelemetry(config);
 
             var startupAccessState = AccessState.load(config);
             log.info("AccessState loaded: rootAdmin=[{}], whitelist=[{}], globalMute=[{}], admins=[{}]",
@@ -53,10 +60,10 @@ public class Main {
             TelegramBot tgBot = Bot.createBot(config);
             var accessGuard = new AccessGuard(startupAccessState);
             var sender = new Sender(tgBot, config);
-            var commands = buildCommands(sender, accessGuard);
-            var commandRouter = new CommandRouter(commands, config, accessGuard);
-            var messageRouter = new MessageRouter(commandRouter, accessGuard, sender);
-            var receiver = new Receiver(messageRouter);
+            var commands = buildCommands(sender, accessGuard, telemetry);
+            var commandRouter = new CommandRouter(commands, config, accessGuard, telemetry);
+            var messageRouter = new MessageRouter(commandRouter, accessGuard, sender, telemetry);
+            var receiver = new Receiver(messageRouter, telemetry);
             var bot = new Bot(tgBot, receiver, config);
 
             bot.start();
@@ -85,17 +92,23 @@ public class Main {
         }
     }
 
-    private static List<Command> buildCommands(Sender sender, AccessGuard accessGuard) {
+    private static List<Command> buildCommands(Sender sender, AccessGuard accessGuard, BotTelemetry telemetry) {
         List<Command> commands = new ArrayList<>();
 
         // User commands
-        commands.add(new StartCommand(sender));
+        commands.add(new StartCommand(sender, telemetry));
 
         // Admin commands
-        commands.add(new AccessCommand(sender, accessGuard));
+        commands.add(new AccessCommand(sender, accessGuard, telemetry));
 
-        commands.add(new HelpCommand(sender, Collections.unmodifiableList(commands), accessGuard));
+        commands.add(new HelpCommand(sender, Collections.unmodifiableList(commands), accessGuard, telemetry));
 
         return List.copyOf(commands);
+    }
+
+    private static void prepareWorkDir(Path workDir) throws IOException {
+        Files.createDirectories(workDir);
+        if (!Files.isWritable(workDir))
+            throw new IOException("Work directory is not writable: " + workDir.toAbsolutePath());
     }
 }

@@ -11,12 +11,14 @@ import io.github.qdiaps.jsaver.bot.Sender;
 import io.github.qdiaps.jsaver.command.AdminCommand;
 import io.github.qdiaps.jsaver.contract.MessageMetadata;
 import io.github.qdiaps.jsaver.contract.Payload;
+import io.github.qdiaps.jsaver.telemetry.BotTelemetry;
 import lombok.RequiredArgsConstructor;
 
 @RequiredArgsConstructor
 public class AccessCommand implements AdminCommand {
     private final Sender sender;
     private final AccessGuard accessGuard;
+    private final BotTelemetry telemetry;
 
     public String name() {
         return "access";
@@ -84,6 +86,7 @@ public class AccessCommand implements AdminCommand {
         }
 
         sender.sendContent(metadata, new Payload.Text(builder.toString()));
+        telemetry.recordSuccess();
     }
 
     private String formatIds(Set<Long> ids) {

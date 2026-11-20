@@ -10,6 +10,7 @@ import io.github.qdiaps.jsaver.command.AdminCommand;
 import io.github.qdiaps.jsaver.command.Command;
 import io.github.qdiaps.jsaver.contract.MessageMetadata;
 import io.github.qdiaps.jsaver.contract.Payload;
+import io.github.qdiaps.jsaver.telemetry.BotTelemetry;
 import lombok.RequiredArgsConstructor;
 
 @RequiredArgsConstructor
@@ -17,6 +18,7 @@ public class HelpCommand implements Command {
     private final Sender sender;
     private final List<Command> commands;
     private final AccessGuard accessGuard;
+    private final BotTelemetry telemetry;
 
     public String name() {
         return "help";
@@ -51,6 +53,7 @@ public class HelpCommand implements Command {
         }
 
         sender.sendContent(metadata, new Payload.Text(helpText));
+        telemetry.recordSuccess();
     }
 
     private String formatCommands(Predicate<Command> filter) {
