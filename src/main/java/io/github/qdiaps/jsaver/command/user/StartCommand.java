@@ -6,6 +6,7 @@ import io.github.qdiaps.jsaver.bot.Sender;
 import io.github.qdiaps.jsaver.command.Command;
 import io.github.qdiaps.jsaver.contract.MessageMetadata;
 import io.github.qdiaps.jsaver.contract.Payload;
+import io.github.qdiaps.jsaver.telemetry.BotTelemetry;
 import lombok.RequiredArgsConstructor;
 
 @RequiredArgsConstructor
@@ -20,6 +21,7 @@ public class StartCommand implements Command {
         """;
     
     private final Sender sender;
+    private final BotTelemetry telemetry;
 
     public String name() {
         return "start";
@@ -31,5 +33,6 @@ public class StartCommand implements Command {
 
     public void execute(MessageMetadata metadata, List<String> args) {
         sender.sendContent(metadata, new Payload.Text(WELCOME_TEXT));
+        telemetry.recordSuccess();
     }
 }
