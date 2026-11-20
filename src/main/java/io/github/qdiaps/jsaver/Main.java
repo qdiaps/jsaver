@@ -21,6 +21,7 @@ import io.github.qdiaps.jsaver.bot.Sender;
 import io.github.qdiaps.jsaver.command.Command;
 import io.github.qdiaps.jsaver.command.CommandRouter;
 import io.github.qdiaps.jsaver.command.admin.AccessCommand;
+import io.github.qdiaps.jsaver.command.admin.StatsCommand;
 import io.github.qdiaps.jsaver.command.user.HelpCommand;
 import io.github.qdiaps.jsaver.command.user.StartCommand;
 import io.github.qdiaps.jsaver.config.AppConfig;
@@ -100,6 +101,7 @@ public class Main {
 
         // Admin commands
         commands.add(new AccessCommand(sender, accessGuard, telemetry));
+        commands.add(new StatsCommand(sender, telemetry));
 
         commands.add(new HelpCommand(sender, Collections.unmodifiableList(commands), accessGuard, telemetry));
 
