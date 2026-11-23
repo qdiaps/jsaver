@@ -30,7 +30,10 @@ public record AppConfig(
         String botUsername,
         long rootAdminId,
         int shutdownTimeoutSeconds,
-        int throttledCooldownSec
+        int throttledCooldownSec,
+        String tasksDirName,
+        long taskDiskReserveMb,
+        long diskSafetyMarginMb
 ) {
     public AppConfig {
         if (commandTimeoutSeconds <= 0)
@@ -51,6 +54,13 @@ public record AppConfig(
             throw new IllegalArgumentException("SHUTDOWN_TIMEOUT_SECONDS must be > 0");
         if (throttledCooldownSec <= 0)
             throw new IllegalArgumentException("SENDER_THROTTLED_COOLDOWN_SEC must be > 0");
+        if (tasksDirName == null || tasksDirName.isBlank()
+            || tasksDirName.contains("/") || tasksDirName.contains("\\") || tasksDirName.contains(".."))
+            throw new IllegalArgumentException("TASKS_DIR_NAME cannot have '/', '\' or '..'");
+        if (taskDiskReserveMb <= 0)
+            throw new IllegalArgumentException("TASK_DISK_RESERVE_MB must be > 0");
+        if (diskSafetyMarginMb < 0)
+            throw new IllegalArgumentException("DISK_SAFETY_MARGIN_MB must be >= 0");
     }
 
     public static AppConfig load() {
@@ -79,7 +89,10 @@ public record AppConfig(
             botUsername,
             getLong(env, "TELEGRAM_ROOT_ADMIN_ID", 0),
             getInt(env, "SHUTDOWN_TIMEOUT_SECONDS", 30),
-            getInt(env, "SENDER_THROTTLED_COOLDOWN_SEC", 15)
+            getInt(env, "SENDER_THROTTLED_COOLDOWN_SEC", 15),
+            getString(env, "TASKS_DIR_NAME", "tasks"),
+            getLong(env, "TASK_DISK_RESERVE_MB", 4000L),
+            getLong(env, "DISK_SAFETY_MARGIN_MB", 1536L)
         );
     }
 
