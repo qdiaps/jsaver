@@ -4,6 +4,8 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.Objects;
 
+import io.github.qdiaps.jsaver.contract.DiskSpaceInfo;
+
 public record TelemetrySnapshot(
     Instant startedAt, Duration uptime,
 
@@ -11,11 +13,13 @@ public record TelemetrySnapshot(
     long ignoredUpdates, long inFlightRequests,
 
     long usedMemoryBytes, long maxMemoryBytes,
-    long usableDiskBytes, long totalDiskBytes
+
+    DiskSpaceInfo diskSpaceInfo
 ) {
     public TelemetrySnapshot {
-        Objects.requireNonNull(startedAt, "startedAt must not be null");
-        Objects.requireNonNull(uptime, "uptime must not be null");
+        Objects.requireNonNull(startedAt);
+        Objects.requireNonNull(uptime);
+        Objects.requireNonNull(diskSpaceInfo);
 
         if (uptime.isNegative()) {
             throw new IllegalArgumentException("uptime cannot be negative: " + uptime);
@@ -40,12 +44,6 @@ public record TelemetrySnapshot(
         if (usedMemoryBytes < 0 || maxMemoryBytes <= 0 || usedMemoryBytes > maxMemoryBytes) {
             throw new IllegalArgumentException(
                     "Invalid memory metrics: used=%d, max=%d".formatted(usedMemoryBytes, maxMemoryBytes)
-            );
-        }
-
-        if (usableDiskBytes < 0 || totalDiskBytes < 0 || usableDiskBytes > totalDiskBytes) {
-            throw new IllegalArgumentException(
-                    "Invalid disk metrics: usable=%d, total=%d".formatted(usableDiskBytes, totalDiskBytes)
             );
         }
     }

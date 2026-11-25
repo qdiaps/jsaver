@@ -50,7 +50,8 @@ public class Main {
             prepareWorkDir(config.workDir());
             log.info("Environment: [{}], working directory: [{}]", config.environment(), config.workDir());
 
-            var telemetry = new BotTelemetry(config);
+            var workspaceManager = new WorkspaceManager(config);
+            var telemetry = new BotTelemetry(config, workspaceManager);
 
             var startupAccessState = AccessState.load(config);
             log.info("AccessState loaded: rootAdmin=[{}], whitelist=[{}], globalMute=[{}], admins=[{}]",
@@ -67,7 +68,6 @@ public class Main {
             var messageRouter = new MessageRouter(commandRouter, accessGuard, sender, telemetry);
             var receiver = new Receiver(messageRouter, telemetry);
             var bot = new Bot(tgBot, receiver, config);
-            var workspaceManager = new WorkspaceManager(config);
 
             workspaceManager.init();
             workspaceManager.cleanupOrphans();

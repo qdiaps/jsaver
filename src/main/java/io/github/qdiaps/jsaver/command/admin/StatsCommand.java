@@ -47,9 +47,6 @@ public class StatsCommand implements AdminCommand {
         builder.append(" ▸ Игнорировано: %d\n\n".formatted(s.ignoredUpdates()));
 
         var memoryPercent = (s.usedMemoryBytes() * 100) / s.maxMemoryBytes();
-        var diskInfo = s.totalDiskBytes() > 0
-            ? "свободно %s из %s".formatted(formatBytes(s.usableDiskBytes()), formatBytes(s.totalDiskBytes()))
-            : "недоступно";
 
         builder.append("Ресурсы:\n");
         builder.append(" ▸ Память JVM: %s / %s (%d%%)\n".formatted(
@@ -57,7 +54,27 @@ public class StatsCommand implements AdminCommand {
             formatBytes(s.maxMemoryBytes()),
             memoryPercent
         ));
-        builder.append(" ▸ Диск: %s".formatted(diskInfo));
+
+        var disk = s.diskSpaceInfo();
+        if (disk.totalBytes() > 0) {
+            var freePercent = (disk.usableBytes() * 100) / disk.totalBytes();
+            builder.append(" ▸ Диск: свободно %s из %s (%d%%)\n".formatted(
+                    formatBytes(disk.usableBytes()),
+                    formatBytes(disk.totalBytes()),
+                    freePercent
+            ));
+            builder.append("  └ Доступно под задачи: %s (слотов: %d)\n".formatted(
+                    formatBytes(disk.effectiveFreeBytes()),
+                    disk.availableTaskSlots()
+            ));
+            builder.append("  └ Зарезервировано: %s (активных: %d, по %s)".formatted(
+                    formatBytes(disk.reservedBytes()),
+                    disk.activeWorkspaces(),
+                    formatBytes(disk.reservePerTaskBytes())
+            ));
+        } else {
+            builder.append(" ▸ Диск: недоступно");
+        }
 
         sender.sendContent(metadata, new Payload.Text(builder.toString()));
         telemetry.recordSuccess();

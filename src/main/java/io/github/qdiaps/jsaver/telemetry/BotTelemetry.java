@@ -1,8 +1,5 @@
 package io.github.qdiaps.jsaver.telemetry;
 
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Objects;
@@ -10,13 +7,14 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.LongAdder;
 
 import io.github.qdiaps.jsaver.config.AppConfig;
+import io.github.qdiaps.jsaver.downloader.WorkspaceManager;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 public class BotTelemetry {
     private final Instant startedAt;
     private final long startNanoTime;
-    private final Path workDir;
+    private final WorkspaceManager workspace;
 
     private final LongAdder succeededRequests = new LongAdder();
     private final LongAdder rejectedRequests = new LongAdder();
@@ -24,10 +22,10 @@ public class BotTelemetry {
     private final LongAdder ignoredUpdates = new LongAdder();
     private final AtomicInteger inFlightRequests = new AtomicInteger(0);
 
-    public BotTelemetry(AppConfig config) {
+    public BotTelemetry(AppConfig config, WorkspaceManager workspace) {
         Objects.requireNonNull(config);
+        this.workspace = Objects.requireNonNull(workspace);
 
-        workDir = config.workDir();
         startedAt = Instant.now();
         startNanoTime = System.nanoTime();
     }
@@ -42,16 +40,6 @@ public class BotTelemetry {
         var maxMemoryBytes = runtime.maxMemory();
         var usedMemoryBytes = runtime.totalMemory() - runtime.freeMemory();
 
-        var usableDiskBytes = 0L;
-        var totalDiskBytes = 0L;
-        try {
-            var store = Files.getFileStore(workDir);
-            usableDiskBytes = store.getUsableSpace();
-            totalDiskBytes = store.getTotalSpace();
-        } catch (IOException e) {
-            log.warn("Failed to read disk space for {}: {}", workDir, e.getMessage());
-        }
-
         var uptime = Duration.ofNanos(System.nanoTime() - startNanoTime);
 
         return new TelemetrySnapshot(
@@ -59,7 +47,7 @@ public class BotTelemetry {
             total, succeeded, rejected, failed,
             ignoredUpdates.sum(), inFlightRequests.get(),
             usedMemoryBytes, maxMemoryBytes,
-            usableDiskBytes, totalDiskBytes
+            workspace.getDiskSpaceInfo()
         );
     }
 
