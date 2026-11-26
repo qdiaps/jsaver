@@ -33,7 +33,9 @@ public record AppConfig(
         int throttledCooldownSec,
         String tasksDirName,
         long taskDiskReserveMb,
-        long diskSafetyMarginMb
+        long diskSafetyMarginMb,
+        int mediaInspectTimeoutSeconds,
+        int cliOutputLimitKb
 ) {
     public AppConfig {
         if (commandTimeoutSeconds <= 0)
@@ -61,6 +63,10 @@ public record AppConfig(
             throw new IllegalArgumentException("TASK_DISK_RESERVE_MB must be > 0");
         if (diskSafetyMarginMb < 0)
             throw new IllegalArgumentException("DISK_SAFETY_MARGIN_MB must be >= 0");
+        if (mediaInspectTimeoutSeconds < 0)
+            throw new IllegalArgumentException("MEDIA_INSPECT_TIMEOUT_SECONDS must be > 0");
+        if (cliOutputLimitKb < 0)
+            throw new IllegalArgumentException("CLI_OUTPUT_LIMIT_KB must be > 0");
     }
 
     public static AppConfig load() {
@@ -78,7 +84,7 @@ public record AppConfig(
             getString(env, "TELEGRAM_BOT_TOKEN", ""),
             getString(env, "TELEGRAM_BOT_API_URL", ""),
             Paths.get(getString(env, "WORK_DIR", "./data")).toAbsolutePath().normalize(),
-            getLong(env, "COMMAND_TIMEOUT_SECONDS", 300L),
+            getLong(env, "COMMAND_TIMEOUT_SECONDS", 900L),
             getString(env, "APP_ENV", "dev").toLowerCase(),
             getLongSet(env, "ALLOWED_TELEGRAM_USERS"),
             getLongSet(env, "ALLOWED_TELEGRAM_CHATS"),
@@ -92,7 +98,9 @@ public record AppConfig(
             getInt(env, "SENDER_THROTTLED_COOLDOWN_SEC", 15),
             getString(env, "TASKS_DIR_NAME", "tasks"),
             getLong(env, "TASK_DISK_RESERVE_MB", 4000L),
-            getLong(env, "DISK_SAFETY_MARGIN_MB", 1536L)
+            getLong(env, "DISK_SAFETY_MARGIN_MB", 1536L),
+            getInt(env, "MEDIA_INSPECT_TIMEOUT_SECONDS", 30),
+            getInt(env, "CLI_OUTPUT_LIMIT_KB", 64)
         );
     }
 

@@ -46,16 +46,17 @@ public class CliRunner {
 
     private static final int BUFFER_SIZE = 4096;
     private static final long TERMINATION_WAIT_SECONDS = 5L;
-    private static final int MAX_OUTPUT_CHARS = Math.multiplyExact(64, 1024);
 
     private final AppConfig config;
+    private final int maxOutputChars;
 
     public CliRunner(AppConfig config) {
         this.config = Objects.requireNonNull(config);
+        maxOutputChars = Math.multiplyExact(config.cliOutputLimitKb(), 1024);
     }
 
     public CliResult execute(CliTool tool, List<String> args, Path workDir) throws InterruptedException {
-        return execute(tool, args, workDir, Duration.ofSeconds(900));
+        return execute(tool, args, workDir, Duration.ofSeconds(config.commandTimeoutSeconds()));
     }
 
     public CliResult execute(CliTool tool, List<String> args, Path workDir, Duration timeout) throws InterruptedException {
@@ -91,12 +92,12 @@ public class CliRunner {
              ProcessScope ignored = new ProcessScope(process)) {
 
             CompletableFuture<StreamOutput> stdoutFuture = CompletableFuture.supplyAsync(
-                    () -> readHead(process.getInputStream(), MAX_OUTPUT_CHARS),
+                    () -> readHead(process.getInputStream(), maxOutputChars),
                     virtualExecutor
             );
 
             CompletableFuture<StreamOutput> stderrFuture = CompletableFuture.supplyAsync(
-                    () -> readTail(process.getInputStream(), MAX_OUTPUT_CHARS),
+                    () -> readTail(process.getInputStream(), maxOutputChars),
                     virtualExecutor
             );
 

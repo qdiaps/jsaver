@@ -25,6 +25,7 @@ import io.github.qdiaps.jsaver.command.admin.StatsCommand;
 import io.github.qdiaps.jsaver.command.user.HelpCommand;
 import io.github.qdiaps.jsaver.command.user.StartCommand;
 import io.github.qdiaps.jsaver.config.AppConfig;
+import io.github.qdiaps.jsaver.downloader.CliRunner;
 import io.github.qdiaps.jsaver.downloader.CliTool;
 import io.github.qdiaps.jsaver.downloader.WorkspaceManager;
 import io.github.qdiaps.jsaver.telemetry.BotTelemetry;
@@ -71,6 +72,7 @@ public class Main {
             var messageRouter = new MessageRouter(commandRouter, accessGuard, sender, telemetry);
             var receiver = new Receiver(messageRouter, telemetry);
             var bot = new Bot(tgBot, receiver, config);
+            var cliRunner = new CliRunner(config);
 
             workspaceManager.init();
             workspaceManager.cleanupOrphans();
